@@ -1,12 +1,12 @@
 ---
-title: 'Digital Audio Mixer'
+title: 'Digital Audio Mixer: A full-fledged digital mixer featuring AI-powered automix'
 publishedAt: '2024-07-25'
 summary: 'Some of my thoughts, research, and experimentation on constructing a digital audio mixer'
 ---
 
 ## The Problem and the Idea
 
-![The band](../assets/Band.jpg)
+![The band](/blog-assets/digital-audio-mixer/images/Band.jpg)
 
 As someone who's been involved in a band, I've been made acutely aware of both the bulk and setup overhead involved with running a live gig. 
 This includes but is not limited to: 
@@ -22,6 +22,29 @@ So, I had an idea. I am working alongside some of my fellow band members to brin
 Keep reading, and I'll explain the details. 
 
 ## Form Factor
+
+![Mixer Mockup](/blog-assets/digital-audio-mixer/images/MixerMockupCropped.png)
+
+This is an early mockup of what the device might look like. It's optimistically slim and features touchscreen control, a plethora of inputs, and knobs for gain/volume. 
+It follows a conventional form factor for digital mixers. However, future iterations may eliminate physical control entirely. 
+
+The vision we had was to control the mixer through an app connected over LAN. This is a standard industry practice, however it's only commonly found in high-end, static setups 
+located in concert venues. It's our vision to bring this to something with a smaller, mobile form factor. This will enable the band's engineer to make mixes on their phone or tablet from audience perspective,
+which is crucial to a good sounding and expedient mix. Without wireless control, the engineer would have to repeatedly make trips between the audience's position and the mixer board.
+
+The board I/O may be iterated upon in the future as well. We've seen mobile mixers on the market with convenient AUX ins and Bluetooth I/O. This allows the band to easily incorporate backing tracks into the performance.
+
+## Mixer Architecture and Part Selection
+
+![Mixer Block Diagram](/blog-assets/digital-audio-mixer/images/MixerArchitectureL.png)
+
+Here's a block diagram of the mixer. Most of it falls under the category of 'reinventing the wheel.' 
+
+## Auto-Mix Feature
+
+## Workflow 
+
+## algorithm
 
 
 
