@@ -1,7 +1,8 @@
 ---
-title: 'Digital Audio Mixer: A full-fledged digital mixer featuring AI-powered automix'
+title: 'Digital Audio Mixer: A full-fledged digital mixer featuring AI-powered automix (WIP)'
 publishedAt: '2024-07-25'
 summary: 'Some of my thoughts, research, and experimentation on constructing a digital audio mixer'
+image: '/blog-assets/digital-audio-mixer/images/Band.jpg'
 ---
 
 
@@ -37,9 +38,31 @@ The board I/O may be iterated upon in the future as well. We've seen mobile mixe
 
 # Mixer Architecture and Part Selection
 
-![Mixer Block Diagram](/blog-assets/digital-audio-mixer/images/MixerArchitectureL.png)
+![Mixer Block Diagram](/blog-assets/digital-audio-mixer/images/MixerArchitecture.png)
 
-Here's a block diagram of the mixer. Most of it falls under the category of 'reinventing the wheel.' 
+Here's a block diagram of the mixer. Most of it falls under the category of 'reinventing the wheel.' Communication between components is handled by I2C and I2S for control signals and audio streams, respectively. 
+
+## Microcontrollers
+
+The most unconventional design feature is the use of a Raspberry Pi SBC in combination with an xCORE microcontroller. We originally intended to use just a Raspberry Pi for all DSP, control, and AI purposes. However, we quickly
+ran into hurdles with its IO and the multi-threaded nature of the project. With ~8 streams of audio, the 4 cores of the Pi would run us a huge challenge of parallel processing. No semaphores and locks for us today, thanks. 
+
+With that in mind, we
+took a look at what the industry uses and came across the XMOS xCORE line of microcontrollers. The selling point of the xCORE MCUS is its extremely multi-threaded nature, with MCUs available in up to 32 core configurations. This would be ample for our DSP purposes.
+We decided to keep the Pi for other purposes, partly because we had it, and partly because it would make our life easy in terms of smashing together a usable GUI and running our AI model. If this product ever
+makes it to production, we would probably port over the AI capabilities to the xCORE (with their new line of chips featuring a dedicated vector ALU!) and control to a STM32 chip or something similar. 
+
+## Electrical Hardware
+
+The hardware of the mixer needs to handle two main tasks, amplication and conversion. Let's begin with amplication, or more specifically, mic/instrument preamps.
+
+### Electrical Hardware: Preamps
+
+What are preamps? Amps before your amps? What are you talking about? 
+
+In audio, there are three main 
+
+
 
 # Auto-Mix Feature
 
@@ -47,8 +70,10 @@ One of the novel features we envisioned was an AI-powered automix feature.
 
 ## Workflow 
 
-## algorithm
+![Mixer Workflow](/blog-assets/digital-audio-mixer/images/MixerWorkflow.png)
 
+
+## algorithm
 
 
 
