@@ -1,5 +1,5 @@
 ---
-title: 'Digital Audio Mixer: A from-scratch digital mixer featuring AI-powered automix (WIP)'
+title: 'Digital Audio Mixer: A from-scratch digital mixer featuring AI-powered automix (Updated: 08-14-24)'
 publishedAt: '2024-07-25'
 summary: 'Some of my thoughts, research, and experimentation on constructing a digital audio mixer'
 image: '/blog-assets/digital-audio-mixer/images/Band.jpg'
@@ -86,7 +86,7 @@ Fundamentally, mixing is about fitting sounds in a finite space composed of freq
 space, they will "mask," producing a muddy, unpleasant result where neither sound is heard particularly well. In order to unmask two sounds, you can mold the frequency spectrum of one or both sounds so that they are moved out of the way of each other in the 
 frequency domain or you can physically move them in space so they are no longer on top of each other. 
 
-Using this knowledge, it makes sense to classify sounds based on their frequency rather than their specific identity as an instrument or noise. So with that, we can build a set of training data with many fewer categories: low frequency/bass, mid-range, and
+Using this knowledge, it makes sense to classify sounds based on their frequency rather than their specific identity as an instrument or noise. With that, we can build a set of training data with many fewer categories: low frequency/bass, mid-range, and
 high-range. These categories will make up one dimension of the classication. 
 
 There is another facet of mixing that informs the classification categories. This facet is not so rigorously defined. I like to simply call it "distance." If you envision a song as a performance on a stage, you have several "layers" of performers at different distances from the audience.
@@ -114,27 +114,72 @@ intended for music producers to make their next big hit. I am going to repurpose
 just for the prototype). As a proof of concept, I was able to cobble together over 700 different audio files across 5 categories and use them to train a miniature classification model.
 
 Speaking of the model, how are we going to architect it? It's relatively simple. First, we must convert our audio training data into a visual representation. We do that by creating spectrograms of our audio data,
-which plot frequency over time. In order to optimize this presentation, we will also use the Mel scale instead of the normal decibel scale. The Mel scale differs from the decibel scale in that its values scale linearly according to human perception of volume. 
-So, something that is twice as loud to us will be twice the value on the Mel-scale. This is in contrast to the logarithmic decibel scale, where a two times increase in volume is a 3 decibel jump. Not very intuitive. Scaling our spectrograms in this linear fashion
-will give us a better visual representation of audio, leading to better results through visual AI analysis. 
+which plot frequency over time. In order to optimize this presentation, we will also use the Mel scale instead of the normal frequency scale (Hertz). The Mel scale differs from the normal frequency scale in that its values scale linearly according to human perception of pitch. 
+This is unlike the logarithmic frequency scale, where a doubling of frequency results in a shift of one octave. So, a jump from 1000 Hz to 2000 Hz produces the same pitch difference as going from 2000 Hz to 4000 Hz. Meanwhile a jump from 1000 mels to 2000 mels is 
+the same as a jump from 2000 mels to 3000 mels.  
+Scaling our spectrograms in this linear fashion will give us a better visual representation of audio, leading to better results through visual AI analysis. 
+
+Below is a sample of a mel-spectrogram I generated for my demo audio classifier:
+
+![Acoustic Guitar Mel Spectrogram](/blog-assets/digital-audio-mixer/images/acousticMelSpectrogram.png)
+
+<center>**Mel Spectrogram of an Acoustic Guitar**</center>
+
+You may notice that the y-axis is labeled with "Hz." The actual spectrogram is scaled according to the mel-scale, but the labels are logarithmic and offer the equivalent frequency in Hz.
 
 Given that this is now a visual classification problem, anyone familiar with AI will now guess that the obvious solution is a convolutional neural network. I'm not really enough of an AI nerd (yet) to fully explain a CNN, but just know that it 
-is (was? up until transformers came along) the de-facto method for classifying images. The aforementioned proof of concept is a CNN trained with Python and the FastAI library. The FastAI library is essentially a slightly abstracted and simplified
-version of PyTorch. I loaded my 700 pieces of data and trained a model. For CNNs, the FastAI library defaults to performing transfer learning on the pre-existing RESNET (18 or 34, I'm not sure) model. It delivers fantastic results, with a 
+is (was? up until transformers came along) the de-facto method for classifying images. The aforementioned proof of concept is a CNN trained with Python and the FastAI library. The FastAI library is essentially a simple
+wrapper over PyTorch. I loaded my 700 pieces of data and trained a model. For CNNs, the FastAI library defaults to performing transfer learning on the pre-existing RESNET (18 or 34, I'm not sure) model. It delivers fantastic results, with a 
 validation accuracy of 90 percent! Check out the model at the link below.
 
 <center>**[Link: AI Instrument Classifier](https://joshieyu-audioclassifier.hf.space/)**</center>
 
 Is this what our final model is going to look like? Not exactly. For one, we need something that runs well on embedded systems. PyTorch isn't going to cut it. In my research, I discovered Google's YAMNET audio classification model. 
-It operates off the same principles as my demo model, just with much more training data and a more robust architecture (with about half a million parameters). It delivers over 500 classes of granularity and native support for Tensorflow Lite, 
-an embedded AI platform supported by both our Raspberry Pi and XCORE MCU. It was almost perfect for our needs! Given that we don't need all 500+ categories, we will have to perform some transfer learning to narrow down the categories. Also, we wish to introduce 
+It operates off the same principles as my demo model, but is much more robust (with about half a million parameters). It deliverered over 500 classes of granularity and native support for Tensorflow Lite, 
+an embedded AI platform supported by both our Raspberry Pi and XCORE MCU. It was almost perfect for our needs! Given that we don't need all 500+ categories, we will have to utilize the feature extration to perform some transfer learning and narrow down the categories. Also, we wish to introduce 
 the aforementioned classification dimensions of frequency and distance. 
 
 ## Algorithm
 
-Now that we have sounds classified by their frequency content and arrangement distance, we can work with the algorithm to position them in our mix. In its most basic 
-form, the algorithm simply normalizes the audio streams to an appropriate level and pans it appropriately if operating in stereo. If it's a lead vocal, that will
-be classified as a midrange element placed up front, panned center. It'll be louder than the rest of the 
+Now that we have sounds classified by their frequency content and arrangement distance, we can work with the algorithm to position them in our mix. There are three main aspects to this algorithmic 
+process, volume, space, and creative effects. Let's walk through each of them.
+
+### Algorithm: Volume
+
+In its most basic form, the algorithm simply normalizes the audio streams to an appropriate level and pans it appropriately if operating in stereo. For example, if we have a lead vocal (midrange, lead layer), 
+then we simply normalize it to our "lead" volume (let's say -6dB) and pan it center. If we have a rhythm guitar, (midrange, backing layer), then we normalize it to our "backing" 
+volume (let's say -9dB) and pan it left to avoid frequency masking with the main vocal. 
+
+One of the main challenges with this approach is perceived volume. Decibels are simply a measure of power, and humans may perceive multiple sounds as being of different volume
+even if they have the same decibel value. 
+Thus, even if professional song mixes sound similar in their balance, the decibel values for each mix element may vary drastically between songs. This is why we have audio engineers in the first 
+place! If you could normalize every element to the same volume, apply some generic effects, and call it a day, they would be out of a job. 
+
+Fortunately, there is some existing research in this area. Izotope, a music plugin company, makes a plugin called Neutron. It's an auto-mix plugin that does essentially what we are trying to do. 
+They have done research into both perceived loudness and frequency masking, and I am reading into their literature to hopefully implement a viable solution for our prototype. I will update this
+post as I learn more. 
+
+With all that said, this algorithm is plenty useful even if it doesn't get the balance spot-on. The bulk of the overhead is associated with cabling and gain staging. With our rough 
+volume algorithm, the mixer will already be able to spit out a configuration that allows the mix engineer to focus on fine-tuning the balance as well as the more creative aspects of the mix. 
+
+### Algorithm: Space
+
+Another aspect of placing a sound appropriately in a performance is a sense of space, i.e. reverb. Mix elements must have an appropriate amount of reverb added to them based primarily on their distance 
+classification. Depending on the genre, lead and backing elements may be equally reverb-y, or one may be more reverb-y than the other. Distant elements will have the greatest amount of reverb 
+applied to them. Low-end elements should never have reverb applied to them, no matter the genre. This is due to psychoacoustics: Humans are not good at perceiving space with low-frequencies,
+so any reverb in the low-end simply eats up space in the mix, making it muddy and hard to work with.
+
+As an aside, "amount" of reverb is slightly imprecise. More technically, it can be defined as a function of both reverb volume and reverb tail length. Volume is pretty self-explanatory. Reverb 
+tail length is the amount of time it takes for a sound to fully dissipate in a space, usually quantified by a RT60 value (the time it takes a sound to drop by 60 dB). Larger spaces produce 
+larger reverb tails. The amount of reverb an instrument needs largely depends on how "smooth" its volume envelope is. Percussive elements take better to loud but short reverbs that don't 
+mess with their quick, transient strikes. Smooth pads and lead guitars take better to long reverbs that induce a sense of ethereal space. 
+
+In summary, the space aspect of the algorithm works in tandem with the volume aspect to produce a layered performance with clear delineation between lead elements and backing elements. 
+
+### Algorithm: Creative Effects  
+
+One of the stretch goals of this algorithm is to assign genre-appropriate creative effects. This is less of a technical feat, but requires extensive knowledge of mixing conventions
+across musical genres. It's our vision to be able to automatically apply distortion, flangers, delays, and other effects to appropriate instruments in the mix.
 
 # That's it.
 
