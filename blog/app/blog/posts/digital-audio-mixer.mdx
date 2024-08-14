@@ -49,12 +49,12 @@ ran into hurdles with its IO and the multi-threaded nature of the project. With 
 
 With that in mind, we took a look at what the industry uses and came across the XMOS xCORE line of microcontrollers. The selling point of the xCORE MCUs is its extremely multi-threaded nature, 
 with MCUs available in up to 32 core configurations. This would be ample for our DSP purposes.
-We decided to keep the Pi for other purposes, partly because we had it, and partly because it would make our life easy in terms of smashing together a usable GUI and running our AI model. If this product ever
+We decided to keep the Pi around, partly because we had it, and partly because it would make our life easy in terms of smashing together a usable GUI and running our AI model. If this product ever
 makes it to production, we would probably port over the AI capabilities to the xCORE (with their new line of chips featuring a dedicated vector ALU!) and control to a STM32 chip or something similar. 
 
 ## Electrical Hardware
 
-The hardware of the mixer needs to handle two main tasks, amplication and conversion. I'm currently working on a prototype microphone preamp, and I will write up on it soon. For now, this is WIP.
+The hardware of the mixer needs to handle two main tasks, amplication and conversion. I'm currently working on a prototype microphone preamp, and I will write up on it soon. 
 
 # Auto-Mix Feature
 
@@ -74,6 +74,8 @@ The essence of the mixing software can be broken up into two stages: classificat
 In order for the algorithm to work, we need to figure out what types of instruments and sounds are connected to all the inputs, just like a real mix engineer. Is it a screaming lead guitar? Is it a smooth pad? Is it a lead vocal? Knowing such
 classifications is essential to a mix done by a real engineer and will be crucial to the algorithmic portion of our mixing feature as well. 
 
+### Classification: Overview and Challenges
+
 One of the main challenges is figuring out what categories to classify sounds into. To achieve the granularity that a real mix engineer could pull off would require an unthinkably large volume of training data. Also, as admittedly amateur engineers, we may
 not even be able to envision all of the niche, wacky sounds that people might feed through our mixer. To get past this problem, I had to put on my thinking cap and draw some generalizations about how mixing works. Let's take a crack at it. 
 
@@ -84,13 +86,44 @@ frequency domain or you can physically move them in space so they are no longer 
 Using this knowledge, it makes sense to classify sounds based on their frequency rather than their specific identity as an instrument or noise. So with that, we can build a set of training data with many fewer categories: low frequency/bass, mid-range, and
 high-range. These categories will make up one dimension of the classication. 
 
-There is another facet of mixing that informs the classification categories. This facet is not so rigorously defined. I like to simply call it "depth." If you envision a song as a performance on a stage, you have several "layers" of performers.
-You have the lead layer, which includes the lead vocalist and any solo instrumentation. You have the backing layer, which includes most of the instrumentation, particularly the rhythmic elements. You also occasionally have a distant layer, which 
-may consist of faint background vocals, buried ad libs, and ambient, atmospheric noises. In each mix, you have to place elements in each layer depending on their role in the arrangement. The classication software must do this as well. So we have one more 
-dimension of classification consisting of three categories, lead, backing, and distant. 
+There is another facet of mixing that informs the classification categories. This facet is not so rigorously defined. I like to simply call it "distance." If you envision a song as a performance on a stage, you have several "layers" of performers at different distances from the audience.
+You have the lead layer, which includes the lead vocalist and any solo instrumentation. They stand up front on the stage. You have the backing layer, which includes most of the instrumentation, particularly the rhythmic elements.
+You can envision them playing behind the lead vocalist and soloists. You also occasionally have a distant layer, which may consist of faint background vocals, buried ad libs, and ambient, atmospheric noises. 
+In each mix, you have to place elements in each layer depending on their role in the arrangement. The classification model must do this as well. So we have one more dimension of classification consisting of three categories, lead, backing, and distant. 
 
-If you do that math, that's 3 * 3 = 9 classes. That's so doable! However, we may still have to introduce some extra granularity. 
+There's an old YouTube video on mixing that summarizes these concepts well with its thumbnail. Here it is for a bit of a visual representation. Source: [The Art of Mixing](https://www.youtube.com/watch?v=TEjOdqZFvhY)
 
+![Art of Mixing Diagram](/blog-assets/digital-audio-mixer/images/artOfMixingDiagram.jpg)
+
+So, if you do the math, that's 3 * 3 = 9 classes which we have to collect data for. That's so doable! However, we may still have to introduce some extra granularity, especially if we plan on introducing the ability to automatically configure creative effects. 
+For several common instruments (e.g. electric guitar, bass, etc.), we may actually train the model to recognize the specific instrument. That way, we can apply appropriate effects based on the user-selected genre. If the performers want to play
+alt-rock, we can apply a healthy dose of distortion to the lead guitars. If they want to play something psychedelic, we can put a hazy flanger and huge reverb on the midrange elements. The next section will go into more detail, but this is the basic
+justification behind finer granularity in the classification of instruments. 
+
+### Classification: AI Details
+
+So, how are we actually going to acquire data and set up training and execution of our classification model? Let's begin with data gathering. 
+
+For prototyping, I stumbled upon a gold mine of data: Logic Pro's included loops and sample packs. For the uninitiated, Logic Pro is a popular DAW (Digital Audio Workstation) from Apple. It comes bundled with thousands of loops and samples, 
+intended for music producers to make their next big hit. I am going to repurpose them for our model training (Note: We would probably get sued to oblivion by Apple if we were to put this mixer into production with Logic Pro training data. Again, this is
+just for the prototype). As a proof of concept, I was able to cobble together over 700 different audio files across 5 categories and use them to train a miniature classification model.
+
+Speaking of the model, how are we going to architect it? It's relatively simple. First, we must convert our audio training data into a visual representation. We do that by creating spectrograms of our audio data,
+which plot frequency over time. In order to optimize this presentation, we will also use the Mel scale instead of the normal decibel scale. The Mel scale differs from the decibel scale in that its values scale linearly according to human perception of volume. 
+So, something that is twice as loud to us will be twice the value on the Mel-scale. This is in contrast to the logarithmic decibel scale, where a two times increase in volume is a 3 decibel jump. Not very intuitive. Scaling our spectrograms in this linear fashion
+will give us a better visual representation of audio, leading to better results through visual AI analysis. 
+
+Given that this is now a visual classification problem, anyone familiar with AI will now guess that the obvious solution is a convolutional neural network. I'm not really enough of an AI nerd (yet) to fully explain a CNN, but just know that it 
+is (was? up until transformers came along) the de-facto method for classifying images. The aforementioned proof of concept is a CNN trained with Python and the FastAI library. The FastAI library is essentially a slightly abstracted and simplified
+version of PyTorch. I loaded my 700 pieces of data and trained a model. For CNNs, the FastAI library defaults to performing transfer learning on the pre-existing RESNET(18 or 34, I'm not sure) model. It delivers fantastic results, with a 
+validation accuracy of 90 percent! Check out the model at the link below.
+
+[AI Instrument Classifier](https://joshieyu-audioclassifier.hf.space/)
+
+Is this what our final model is going to look like? Not exactly. For one, we need something that runs well on embedded systems. PyTorch isn't going to cut it. In my research, I discovered Google's YAMNET audio classification model. 
+It operates off the same principles as my demo model, just with much more training data and a more robust architecture. It delivers over 500 classes of granularity and native support for Tensorflow Lite, 
+an embedded AI platform supported by both our Raspberry Pi and XCORE MCU. It was almost perfect for our needs! Given that we don't need all 500+ categories, we will have to perform some transfer learning to narrow down the categories. Also, we wish to introduce 
+the aforementioned classification dimensions of frequency and distance. 
 
 ## Algorithm
 
