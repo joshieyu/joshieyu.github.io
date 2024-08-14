@@ -126,18 +126,19 @@ validation accuracy of 90 percent! Check out the model at the link below.
 <center>**[Link: AI Instrument Classifier](https://joshieyu-audioclassifier.hf.space/)**</center>
 
 Is this what our final model is going to look like? Not exactly. For one, we need something that runs well on embedded systems. PyTorch isn't going to cut it. In my research, I discovered Google's YAMNET audio classification model. 
-It operates off the same principles as my demo model, just with much more training data and a more robust architecture. It delivers over 500 classes of granularity and native support for Tensorflow Lite, 
+It operates off the same principles as my demo model, just with much more training data and a more robust architecture (with about half a million parameters). It delivers over 500 classes of granularity and native support for Tensorflow Lite, 
 an embedded AI platform supported by both our Raspberry Pi and XCORE MCU. It was almost perfect for our needs! Given that we don't need all 500+ categories, we will have to perform some transfer learning to narrow down the categories. Also, we wish to introduce 
 the aforementioned classification dimensions of frequency and distance. 
 
 ## Algorithm
 
-How does mixing work in the real world? Well, your engineer 
-
+Now that we have sounds classified by their frequency content and arrangement distance, we can work with the algorithm to position them in our mix. In its most basic 
+form, the algorithm simply normalizes the audio streams to an appropriate level and pans it appropriately if operating in stereo. If it's a lead vocal, that will
+be classified as a midrange element placed up front, panned center. It'll be louder than the rest of the 
 
 # That's it.
 
-That's all I have for now. I'll be updating this blog with updates as the project progresses. Stay tuned and feel free to talk to me about this project or anything related to music/tech! 
+That's all I have for now. I'll be updating this blog with updates as the project progresses. Stay tuned and feel free to message me about this project or anything related to music/tech! 
 
 
 
