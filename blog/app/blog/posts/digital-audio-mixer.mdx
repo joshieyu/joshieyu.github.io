@@ -1,5 +1,5 @@
 ---
-title: 'Digital Audio Mixer: A full-fledged digital mixer featuring AI-powered automix (WIP)'
+title: 'Digital Audio Mixer: A from-scratch digital mixer featuring AI-powered automix (WIP)'
 publishedAt: '2024-07-25'
 summary: 'Some of my thoughts, research, and experimentation on constructing a digital audio mixer'
 image: '/blog-assets/digital-audio-mixer/images/Band.jpg'
@@ -10,7 +10,7 @@ image: '/blog-assets/digital-audio-mixer/images/Band.jpg'
 
 ![The band](/blog-assets/digital-audio-mixer/images/Band.jpg)
 
-As someone who's been involved in a band, I've been made acutely aware of both the bulk and setup overhead involved with running a live gig. 
+As someone who's been involved in a band, I've been made acutely aware of the bulk and setup overhead involved with running a live gig. 
 This includes but is not limited to: 
 * Lugging around two cars worth of amps, pedalboards, synths, cables, etc.
 * Plugging in a rats nest of cables
@@ -18,9 +18,9 @@ This includes but is not limited to:
     * The real life version of binary search (but for gain staging)
 
 Getting everyone plugged in and set up + bashing out a competent mix requires some inhuman amount of patience and speed. As a musician and engineer, I felt that there had to be a way to optimize this workflow. 
-The somewhat straightforward solution is to plug into a single mixer board and run everything through a PA. This improves on some aspects of setup. A consolidated control center and patch bay definitely improves the speed
+The somewhat straightforward solution is to plug into a single mixer board and run everything through a PA. This improves on some aspects of setup. A consolidated control center and patch bay can improve the speed
 of achieving a competent mix. However, many challenges associated with gain staging, effects, and parameter recall aren't really solved until you start getting into the realm of expensive digital mixers. 
-So, I had an idea. I am working alongside some of my fellow band members to bring to life an economical digital mixer with an AI powered auto-mix algorithm to streamline this process. What does this look like in design? 
+So, I had an idea. I am working alongside some of my fellow band members to bring to life an economical, digital mixer with an AI powered auto-mix algorithm to streamline setup. What does this look like in design? 
 Keep reading, and I'll explain the details. 
 
 # Form Factor
@@ -30,11 +30,11 @@ Keep reading, and I'll explain the details.
 This is an early mockup of what the device might look like. It's optimistically slim and features touchscreen control, a plethora of inputs, and knobs for gain/volume. 
 It follows a conventional form factor for digital mixers. However, future iterations may eliminate physical control entirely. 
 
-The vision we had was to control the mixer through an app connected over LAN. This is a standard industry practice, however it's only commonly found in high-end, static setups 
+The vision we had was to control the mixer through an app connected over LAN. This is a standard industry practice, however it's only found in high-end, static setups 
 located in concert venues. It's our vision to bring this to something with a smaller, mobile form factor. This will enable the band's engineer to make mixes on their phone or tablet from audience perspective,
-which is crucial to a good sounding and expedient mix. Without wireless control, the engineer would have to repeatedly make trips between the audience's position and the mixer board.
+which is crucial to a pleasing and speedy mix. Without wireless control, the engineer would have to repeatedly make trips between the audience's position and the mixer board.
 
-The board I/O may be iterated upon in the future as well. We've seen mobile mixers on the market with convenient AUX ins and Bluetooth I/O. This allows the band to easily incorporate backing tracks into the performance.
+The board I/O may be iterated upon in the future. We've seen mobile mixers on the market with convenient AUX ins and Bluetooth I/O. This allows the band to easily incorporate backing tracks into the performance.
 
 # Mixer Architecture and Part Selection
 
@@ -47,33 +47,54 @@ Here's a block diagram of the mixer. Most of it falls under the category of 'rei
 The most unconventional design feature is the use of a Raspberry Pi SBC in combination with an xCORE microcontroller. We originally intended to use just a Raspberry Pi for all DSP, control, and AI purposes. However, we quickly
 ran into hurdles with its IO and the multi-threaded nature of the project. With ~8 streams of audio, the 4 cores of the Pi would run us a huge challenge of parallel processing. No semaphores and locks for us today, thanks. 
 
-With that in mind, we
-took a look at what the industry uses and came across the XMOS xCORE line of microcontrollers. The selling point of the xCORE MCUS is its extremely multi-threaded nature, with MCUs available in up to 32 core configurations. This would be ample for our DSP purposes.
+With that in mind, we took a look at what the industry uses and came across the XMOS xCORE line of microcontrollers. The selling point of the xCORE MCUs is its extremely multi-threaded nature, 
+with MCUs available in up to 32 core configurations. This would be ample for our DSP purposes.
 We decided to keep the Pi for other purposes, partly because we had it, and partly because it would make our life easy in terms of smashing together a usable GUI and running our AI model. If this product ever
 makes it to production, we would probably port over the AI capabilities to the xCORE (with their new line of chips featuring a dedicated vector ALU!) and control to a STM32 chip or something similar. 
 
 ## Electrical Hardware
 
-The hardware of the mixer needs to handle two main tasks, amplication and conversion. Let's begin with amplication, or more specifically, mic/instrument preamps.
-
-### Electrical Hardware: Preamps
-
-What are preamps? Amps before your amps? What are you talking about? 
-
-In audio, there are three main 
-
-
+The hardware of the mixer needs to handle two main tasks, amplication and conversion. I'm currently working on a prototype microphone preamp, and I will write up on it soon. For now, this is WIP.
 
 # Auto-Mix Feature
 
-One of the novel features we envisioned was an AI-powered automix feature. 
+One of the novel features we envisioned was an AI-powered automix feature. The workflow would go something like this: 
 
-## Workflow 
+The band engages and configures the auto-mix function, selecting genre and whether or not creative effects should be applied. They then plug into the board and do soundcheck, playing through a section of their song. After that, the 
+board spits out a mix configuration, setting levels, doing basic EQ, and applying genre appropriate effects, if desired. 
+
+Below are the main components of the workflow/software. We'll get into the software below.
 
 ![Mixer Workflow](/blog-assets/digital-audio-mixer/images/MixerWorkflow.png)
 
+The essence of the mixing software can be broken up into two stages: classification and algorithm. Let's walk through them.
 
-## algorithm
+## Classification
+
+In order for the algorithm to work, we need to figure out what types of instruments and sounds are connected to all the inputs, just like a real mix engineer. Is it a screaming lead guitar? Is it a smooth pad? Is it a lead vocal? Knowing such
+classifications is essential to a mix done by a real engineer and will be crucial to the algorithmic portion of our mixing feature as well. 
+
+One of the main challenges is figuring out what categories to classify sounds into. To achieve the granularity that a real mix engineer could pull off would require an unthinkably large volume of training data. Also, as admittedly amateur engineers, we may
+not even be able to envision all of the niche, wacky sounds that people might feed through our mixer. To get past this problem, I had to put on my thinking cap and draw some generalizations about how mixing works. Let's take a crack at it. 
+
+Fundamentally, mixing is about fitting sounds in a finite space composed of frequency and position/panning (if in stereo). This is in part due to a psychoacoustic effect known as frequency masking. If two sounds of similar frequency are played at the same position in 
+space, they will "mask," producing a muddy, unpleasant result where neither sound is heard particularly well. In order to unmask two sounds, you can mold the frequency spectrum of one or both sounds so that they are moved out of the way of each other in the 
+frequency domain or you can physically move them in space so they are no longer on top of each other. 
+
+Using this knowledge, it makes sense to classify sounds based on their frequency rather than their specific identity as an instrument or noise. So with that, we can build a set of training data with many fewer categories: low frequency/bass, mid-range, and
+high-range. These categories will make up one dimension of the classication. 
+
+There is another facet of mixing that informs the classification categories. This facet is not so rigorously defined. I like to simply call it "depth." If you envision a song as a performance on a stage, you have several "layers" of performers.
+You have the lead layer, which includes the lead vocalist and any solo instrumentation. You have the backing layer, which includes most of the instrumentation, particularly the rhythmic elements. You also occasionally have a distant layer, which 
+may consist of faint background vocals, buried ad libs, and ambient, atmospheric noises. In each mix, you have to place elements in each layer depending on their role in the arrangement. The classication software must do this as well. So we have one more 
+dimension of classification consisting of three categories, lead, backing, and distant. 
+
+
+
+## Algorithm
+
+How does mixing work in the real world? Well, your engineer 
+
 
 
 
