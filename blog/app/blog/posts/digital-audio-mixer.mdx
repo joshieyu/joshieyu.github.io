@@ -10,6 +10,8 @@ image: '/blog-assets/digital-audio-mixer/images/Band.jpg'
 
 ![The band](/blog-assets/digital-audio-mixer/images/Band.jpg)
 
+<center>**Source: [Lovebirds & The Fools](https://www.instagram.com/p/C3ThdSFrfM8/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==)**</center>
+
 As someone who's been involved in a band, I've been made acutely aware of the bulk and setup overhead involved with running a live gig. 
 This includes but is not limited to: 
 * Lugging around two cars worth of amps, pedalboards, synths, cables, etc.
@@ -54,7 +56,8 @@ makes it to production, we would probably port over the AI capabilities to the x
 
 ## Electrical Hardware
 
-The hardware of the mixer needs to handle two main tasks, amplication and conversion. I'm currently working on a prototype microphone preamp, and I will write up on it soon. 
+The hardware of the mixer needs to handle two main tasks, amplication and conversion. I'm currently working on a prototype microphone preamp, and I will write up on it soon. Preamp design is nifty! I'm basing my design off the Analog Devices SSM2019 
+amplification IC. 
 
 # Auto-Mix Feature
 
@@ -91,9 +94,11 @@ You have the lead layer, which includes the lead vocalist and any solo instrumen
 You can envision them playing behind the lead vocalist and soloists. You also occasionally have a distant layer, which may consist of faint background vocals, buried ad libs, and ambient, atmospheric noises. 
 In each mix, you have to place elements in each layer depending on their role in the arrangement. The classification model must do this as well. So we have one more dimension of classification consisting of three categories, lead, backing, and distant. 
 
-There's an old YouTube video on mixing that summarizes these concepts well with its thumbnail. Here it is for a bit of a visual representation. Source: [The Art of Mixing](https://www.youtube.com/watch?v=TEjOdqZFvhY)
+There's an old YouTube video on mixing that summarizes these concepts well with its thumbnail. Here it is for a bit of a visual representation. 
 
 ![Art of Mixing Diagram](/blog-assets/digital-audio-mixer/images/artOfMixingDiagram.jpg)
+
+<center>**Source: [The Art of Mixing](https://www.youtube.com/watch?v=TEjOdqZFvhY)**</center>
 
 So, if you do the math, that's 3 * 3 = 9 classes which we have to collect data for. That's so doable! However, we may still have to introduce some extra granularity, especially if we plan on introducing the ability to automatically configure creative effects. 
 For several common instruments (e.g. electric guitar, bass, etc.), we may actually train the model to recognize the specific instrument. That way, we can apply appropriate effects based on the user-selected genre. If the performers want to play
@@ -115,10 +120,10 @@ will give us a better visual representation of audio, leading to better results 
 
 Given that this is now a visual classification problem, anyone familiar with AI will now guess that the obvious solution is a convolutional neural network. I'm not really enough of an AI nerd (yet) to fully explain a CNN, but just know that it 
 is (was? up until transformers came along) the de-facto method for classifying images. The aforementioned proof of concept is a CNN trained with Python and the FastAI library. The FastAI library is essentially a slightly abstracted and simplified
-version of PyTorch. I loaded my 700 pieces of data and trained a model. For CNNs, the FastAI library defaults to performing transfer learning on the pre-existing RESNET(18 or 34, I'm not sure) model. It delivers fantastic results, with a 
+version of PyTorch. I loaded my 700 pieces of data and trained a model. For CNNs, the FastAI library defaults to performing transfer learning on the pre-existing RESNET (18 or 34, I'm not sure) model. It delivers fantastic results, with a 
 validation accuracy of 90 percent! Check out the model at the link below.
 
-[AI Instrument Classifier](https://joshieyu-audioclassifier.hf.space/)
+<center>**[Link: AI Instrument Classifier](https://joshieyu-audioclassifier.hf.space/)**</center>
 
 Is this what our final model is going to look like? Not exactly. For one, we need something that runs well on embedded systems. PyTorch isn't going to cut it. In my research, I discovered Google's YAMNET audio classification model. 
 It operates off the same principles as my demo model, just with much more training data and a more robust architecture. It delivers over 500 classes of granularity and native support for Tensorflow Lite, 
@@ -129,6 +134,10 @@ the aforementioned classification dimensions of frequency and distance.
 
 How does mixing work in the real world? Well, your engineer 
 
+
+# That's it.
+
+That's all I have for now. I'll be updating this blog with updates as the project progresses. Stay tuned and feel free to talk to me about this project or anything related to music/tech! 
 
 
 
