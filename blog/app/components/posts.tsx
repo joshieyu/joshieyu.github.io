@@ -12,16 +12,16 @@ export function BlogPosts() {
           return 1;
         })
         .map((post) => (
-          <Link 
-            key={post.slug} 
-            className="flex flex-row items-start mb-4 transition-transform duration-200 hover:scale-103 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-4"
+          <Link
+            key={post.slug}
+            className="flex flex-col md:flex-row items-start mb-4 transition-transform duration-200 hover:scale-103 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-4"
             href={`/blog/${post.slug}`}
-          >
+            >
             {post.metadata.image && (
               <img
                 src={post.metadata.image}
                 alt={post.metadata.title}
-                className="w-64 h-64 object-cover rounded-lg mr-6"
+                className="w-64 h-64 object-cover rounded-lg mb-4 md:mb-0 md:mr-6"
               />
             )}
             <div className="flex flex-col justify-center">
